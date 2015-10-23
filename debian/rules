@@ -1,0 +1,38 @@
+#!/usr/bin/make -f
+
+PYTHONS:=$(shell pyversions -vr)
+PYTHON3S:=$(shell py3versions -vr)
+
+UPSTREAM_GIT = git://github.com/stefankoegl/python-json-patch.git
+
+include /usr/share/openstack-pkg-tools/pkgos.make
+
+%:
+	dh $@ --buildsystem=python_distutils --with python2,python3
+
+override_dh_auto_test:
+	set -e ; for pyvers in $(PYTHONS) $(PYTHON3S); do \
+		PYTHONPATH=$(CURDIR) python$$pyvers ./tests.py ; \
+	done
+
+override_dh_auto_install:
+	set -e ; for pyvers in $(PYTHONS); do \
+		python$$pyvers setup.py install --install-layout=deb \
+			--root $(CURDIR)/debian/python-jsonpatch; \
+	done
+	set -e ; for pyvers in $(PYTHON3S); do \
+		python$$pyvers setup.py install --install-layout=deb \
+			--root $(CURDIR)/debian/python3-jsonpatch; \
+	done
+	mv $(CURDIR)/debian/python-jsonpatch/usr/bin/jsondiff $(CURDIR)/debian/python-jsonpatch/usr/bin/python2-jsondiff
+	mv $(CURDIR)/debian/python-jsonpatch/usr/bin/jsonpatch $(CURDIR)/debian/python-jsonpatch/usr/bin/python2-jsonpatch
+	mv $(CURDIR)/debian/python3-jsonpatch/usr/bin/jsondiff $(CURDIR)/debian/python3-jsonpatch/usr/bin/python3-jsondiff
+	mv $(CURDIR)/debian/python3-jsonpatch/usr/bin/jsonpatch $(CURDIR)/debian/python3-jsonpatch/usr/bin/python3-jsonpatch
+
+override_dh_python3:
+	dh_python3 --shebang=/usr/bin/python3
+
+override_dh_auto_clean:
+	dh_auto_clean
+	rm -rf build
+	rm -rf *.egg-info
